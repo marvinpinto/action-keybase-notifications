@@ -134,7 +134,7 @@ Read through the [GitHub documentation](https://help.github.com/en/articles/work
 
 ## Versioning
 
-Every commit that lands on master for this project triggers an automatic build as well as a tagged release called `latest`. If you don't wish to live on the bleeding edge you may use a stable release instead. See [releases](/releases) for the available versions.
+Every commit that lands on master for this project triggers an automatic build as well as a tagged release called `latest`. If you don't wish to live on the bleeding edge you may use a stable release instead. See [releases](/releases/latest) for the available versions.
 
 ```yaml
 - uses: "marvinpinto/actions-keybase-notifications@<VERSION>"
