@@ -14,6 +14,8 @@ This action allows you to post messages to [Keybase Chat](https://keybase.io/blo
 1. [How to get help](#how-to-get-help)
 1. [License](#license)
 
+> **NOTE**: The `marvinpinto/action-keybase-notifications` repository is an automatically generated mirror of the [marvinpinto/actions](https://github.com/marvinpinto/actions) monorepo containing this and other actions. Please file issues and pull requests over there.
+
 ## Using the Action
 
 You will need a Keybase paperkey and its corresponding username. It is probably a good idea to create a dedicated Keybase account for this purpose, or at the very least generate a dedicated paperkey on your existing account. This makes it easier to revoke if needed.
@@ -134,7 +136,7 @@ Read through the [GitHub documentation](https://help.github.com/en/articles/work
 
 ## Versioning
 
-Every commit that lands on master for this project triggers an automatic build as well as a tagged release called `latest`. If you don't wish to live on the bleeding edge you may use a stable release instead. See [releases](/releases/latest) for the available versions.
+Every commit that lands on master for this project triggers an automatic build as well as a tagged release called `latest`. If you don't wish to live on the bleeding edge you may use a stable release instead. See [releases](../../releases/latest) for the available versions.
 
 ```yaml
 - uses: "marvinpinto/actions-keybase-notifications@<VERSION>"
