@@ -14519,7 +14519,6 @@ const getAndValidateArgs = () => {
         keybaseChannel: core.getInput('keybase_channel'),
         keybaseTeamName: core.getInput('keybase_team_name'),
         keybaseTopicName: core.getInput('keybase_topic_name'),
-        customChatMessage: core.getInput('message'),
     };
     return args;
 };
@@ -14535,12 +14534,10 @@ exports.main = () => __awaiter(void 0, void 0, void 0, function* () {
         core.startGroup('Determining keybase ID for the user who triggered this event');
         const associatedKeybaseUsername = yield kb.getKeybaseUsername(github.context.actor);
         core.endGroup();
-        const chatMessage = args.customChatMessage
-            ? args.customChatMessage
-            : yield githubEvent_1.generateChatMessage({
-                context: github.context,
-                keybaseUsername: associatedKeybaseUsername,
-            });
+        const chatMessage = yield githubEvent_1.generateChatMessage({
+            context: github.context,
+            keybaseUsername: associatedKeybaseUsername,
+        });
         if (chatMessage) {
             yield kb.sendChatMessage({
                 teamInfo: {
@@ -16205,15 +16202,6 @@ exports.default = ClientBase;
 
 "use strict";
 
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
@@ -16221,13 +16209,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     result["default"] = mod;
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(__webpack_require__(852));
 const githubEvent_1 = __webpack_require__(918);
-const conventional_changelog_angular_1 = __importDefault(__webpack_require__(489));
 var ConventionalCommitTypes;
 (function (ConventionalCommitTypes) {
     ConventionalCommitTypes["feat"] = "Features";
@@ -16304,38 +16288,13 @@ exports.isBreakingChange = ({ body, footer }) => {
     return re.test(body || '') || re.test(footer || '');
 };
 exports.parseGitTag = (inputRef) => {
-    const re = /^(refs\/)?tags\/(.*)$/;
+    const re = /^refs\/tags\/(.*)$/;
     const resMatch = inputRef.match(re);
-    if (!resMatch || !resMatch[2]) {
+    if (!resMatch || !resMatch[1]) {
         core.debug(`Input "${inputRef}" does not appear to be a tag`);
         return '';
     }
-    return resMatch[2];
-};
-exports.getChangelogOptions = () => __awaiter(void 0, void 0, void 0, function* () {
-    const defaultOpts = yield conventional_changelog_angular_1.default;
-    defaultOpts['mergePattern'] = '^Merge pull request #(.*) from (.*)$';
-    defaultOpts['mergeCorrespondence'] = ['issueId', 'source'];
-    core.debug(`Changelog options: ${JSON.stringify(defaultOpts)}`);
-    return defaultOpts;
-});
-// istanbul ignore next
-exports.octokitLogger = (...args) => {
-    return args
-        .map(arg => {
-        if (typeof arg === 'string') {
-            return arg;
-        }
-        // Do not log file buffers
-        if (arg.file) {
-            arg.file = '== raw file buffer info removed ==';
-        }
-        if (arg.data) {
-            arg.data = '== raw file buffer info removed ==';
-        }
-        return JSON.stringify(arg);
-    })
-        .reduce((acc, val) => `${acc} ${val}`, '');
+    return resMatch[1];
 };
 
 
@@ -27990,12 +27949,19 @@ var __importStar = (this && this.__importStar) || function (mod) {
     result["default"] = mod;
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(__webpack_require__(852));
+const lodash_1 = __webpack_require__(943);
 const utils_1 = __webpack_require__(239);
 const conventional_commits_parser_1 = __webpack_require__(726);
+const conventional_changelog_angular_1 = __importDefault(__webpack_require__(489));
 const utils_2 = __webpack_require__(423);
-const utils_3 = __webpack_require__(423);
+// type WebhookPayloadPush extends OctokitWebhooks.WebhookPayloadPush {
+//   // head_commit: any;
+// };
 exports.getShortSHA = (sha) => {
     const coreAbbrev = 7;
     return sha.substring(0, coreAbbrev);
@@ -28007,30 +27973,21 @@ exports.parseIntoQuotedString = (body) => {
         .reduce((acc, line) => {
         return acc + `\n> ${line}`;
     });
-    // Return an empty body instead of an errant "empty quoted line"
-    if (!quotedStr) {
-        return '';
-    }
     // Prepend '>' to account for the first line
     quotedStr = `> ${quotedStr}`;
     return quotedStr;
 };
-const generateParsedCommits = (commits) => __awaiter(void 0, void 0, void 0, function* () {
+const generateParsedCommits = (commits) => {
     const parsedCommits = [];
-    const clOptions = yield utils_2.getChangelogOptions();
     for (const commit of commits) {
         core.debug(`Processing commit: ${JSON.stringify(commit)}`);
-        const parsedCommitMsg = conventional_commits_parser_1.sync(commit.message, clOptions);
-        if (parsedCommitMsg.merge) {
-            core.debug(`Ignoring merge commit: ${parsedCommitMsg.merge}`);
-            continue;
-        }
+        const parsedCommitMsg = conventional_commits_parser_1.sync(commit.message, conventional_changelog_angular_1.default);
         parsedCommitMsg.extra = {
             commit: commit,
             pullRequests: [],
             breakingChange: false,
         };
-        parsedCommitMsg.extra.breakingChange = utils_3.isBreakingChange({
+        parsedCommitMsg.extra.breakingChange = utils_2.isBreakingChange({
             body: parsedCommitMsg.body,
             footer: parsedCommitMsg.footer,
         });
@@ -28038,12 +27995,12 @@ const generateParsedCommits = (commits) => __awaiter(void 0, void 0, void 0, fun
         parsedCommits.push(parsedCommitMsg);
     }
     return parsedCommits;
-});
+};
 const parsePushEvent = (payload, keybaseUsername) => __awaiter(void 0, void 0, void 0, function* () {
     const url = yield utils_1.getShortenedUrl(payload.head_commit.url);
     const forcedStr = payload.forced ? '*force-pushed*' : '*pushed*';
     const userStr = keybaseUsername ? `User @${keybaseUsername}` : `GitHub user \`${payload.sender.login}\``;
-    const parsedCommits = yield generateParsedCommits(payload.commits);
+    const parsedCommits = generateParsedCommits(payload.commits);
     const commitMessagesStr = parsedCommits
         .map(commit => `- ${commit.header}`)
         .reduce((acc, commit) => {
@@ -28052,73 +28009,95 @@ const parsePushEvent = (payload, keybaseUsername) => __awaiter(void 0, void 0, v
     const quotedCommitMessages = exports.parseIntoQuotedString(commitMessagesStr);
     return `${userStr} ${forcedStr} ${payload.commits.length} commit(s) to \`${payload.ref}\` - ${url}\n> _repo: ${payload.repository.full_name}_\n${quotedCommitMessages}`;
 });
-const parseRepoStarringEvent = (payload, keybaseUsername) => {
-    const userStr = keybaseUsername ? `@${keybaseUsername}` : `\`${payload.sender.login}\``;
-    return `Repository \`${payload.repository.full_name}\` starred by ${userStr} :+1: :star:`;
+const parseRepoStarringEvent = ({ payload, keybaseUsername }) => {
+    const ghUser = lodash_1.get(payload, 'sender.login', 'UNKNOWN');
+    const repo = lodash_1.get(payload, 'repository.full_name', 'UNKNOWN');
+    const userStr = keybaseUsername ? `@${keybaseUsername}` : `\`${ghUser}\``;
+    return `Repository \`${repo}\` starred by ${userStr} :+1: :star:`;
 };
-const parsePullRequestEvent = (payload, keybaseUsername) => __awaiter(void 0, void 0, void 0, function* () {
-    const url = yield utils_1.getShortenedUrl(payload.pull_request.html_url);
-    const userStr = keybaseUsername ? `@${keybaseUsername}` : `GitHub user \`${payload.sender.login}\``;
-    const quotedBody = exports.parseIntoQuotedString(payload.pull_request.body);
+const parsePullRequestEvent = ({ payload, keybaseUsername }) => __awaiter(void 0, void 0, void 0, function* () {
+    const ghUser = lodash_1.get(payload, 'sender.login', 'UNKNOWN');
+    const url = yield utils_1.getShortenedUrl(lodash_1.get(payload, 'pull_request.html_url', 'N/A'));
+    const num = lodash_1.get(payload, 'number', 'n/a');
+    const title = lodash_1.get(payload, 'pull_request.title', 'N/A');
+    const userStr = keybaseUsername ? `@${keybaseUsername}` : `GitHub user \`${ghUser}\``;
+    const action = lodash_1.get(payload, 'action', null);
+    const merged = lodash_1.get(payload, 'pull_request.merged', false);
+    const body = lodash_1.get(payload, 'pull_request.body', '');
+    const repo = lodash_1.get(payload, 'repository.full_name', 'n/a');
+    const quotedBody = exports.parseIntoQuotedString(body);
     const actionMap = {
         synchronize: '*updated*',
         opened: '*opened*',
-        closed: payload.pull_request.merged ? '*merged*' : '*closed*',
+        closed: merged ? '*merged*' : '*closed*',
         reopened: '*reopened*',
     };
-    const actionStr = actionMap[payload.action];
-    const quotedBodyStr = quotedBody ? `\n${quotedBody}` : '';
-    return `PR #${payload.number} ${actionStr} by ${userStr} - ${url}\n> _repo: ${payload.repository.full_name}_\n> Title: *${payload.pull_request.title}*${quotedBodyStr}`;
+    const actionStr = lodash_1.get(actionMap, action, 'n/a');
+    return `PR #${num} ${actionStr} by ${userStr} - ${url}\n> _repo: ${repo}_\n> Title: *${title}*\n${quotedBody}`;
 });
-const parseCommitCommentEvent = (payload, keybaseUsername) => __awaiter(void 0, void 0, void 0, function* () {
-    const userStr = keybaseUsername ? `@${keybaseUsername}` : `\`${payload.sender.login}\``;
-    const sha = exports.getShortSHA(payload.comment.commit_id);
-    const url = yield utils_1.getShortenedUrl(payload.comment.html_url);
-    const quotedBody = exports.parseIntoQuotedString(payload.comment.body);
-    return `New comment on \`${payload.repository.full_name}@${sha}\` by ${userStr} - ${url}\n${quotedBody}`;
+const parseCommitCommentEvent = ({ payload, keybaseUsername }) => __awaiter(void 0, void 0, void 0, function* () {
+    const ghUser = lodash_1.get(payload, 'sender.login', 'UNKNOWN');
+    const repo = lodash_1.get(payload, 'repository.full_name', 'UNKNOWN');
+    const userStr = keybaseUsername ? `@${keybaseUsername}` : `\`${ghUser}\``;
+    const sha = exports.getShortSHA(lodash_1.get(payload, 'comment.commit_id', 'n/a'));
+    const url = yield utils_1.getShortenedUrl(lodash_1.get(payload, 'comment.html_url', 'N/A'));
+    const body = lodash_1.get(payload, 'comment.body', '');
+    const quotedBody = exports.parseIntoQuotedString(body);
+    return `New comment on \`${repo}@${sha}\` by ${userStr} - ${url}\n${quotedBody}`;
 });
-const parseIssuesEvent = (payload, keybaseUsername) => __awaiter(void 0, void 0, void 0, function* () {
-    const url = yield utils_1.getShortenedUrl(payload.issue.html_url);
-    const userStr = keybaseUsername ? `@${keybaseUsername}` : `GitHub user \`${payload.sender.login}\``;
-    const quotedBody = exports.parseIntoQuotedString(payload.issue.body);
+const parseIssuesEvent = ({ payload, keybaseUsername }) => __awaiter(void 0, void 0, void 0, function* () {
+    const ghUser = lodash_1.get(payload, 'sender.login', 'UNKNOWN');
+    const url = yield utils_1.getShortenedUrl(lodash_1.get(payload, 'issue.html_url', 'N/A'));
+    const userStr = keybaseUsername ? `@${keybaseUsername}` : `GitHub user \`${ghUser}\``;
+    const repo = lodash_1.get(payload, 'repository.full_name', 'UNKNOWN');
+    const action = lodash_1.get(payload, 'action', null);
+    const issueNumber = lodash_1.get(payload, 'issue.number', 'n/a');
+    const issueTitle = lodash_1.get(payload, 'issue.title', 'n/a');
+    const issueBody = lodash_1.get(payload, 'issue.body', '');
+    const quotedBody = exports.parseIntoQuotedString(issueBody);
     const actionMap = {
         opened: '*opened*',
         edited: '*updated*',
         closed: '*closed*',
         reopened: '*reopened*',
     };
-    const actionStr = actionMap[payload.action];
-    const quotedBodyStr = quotedBody ? `\n${quotedBody}` : '';
-    return `Issue #${payload.issue.number} ${actionStr} by ${userStr} - ${url}\n> _repo: ${payload.repository.full_name}_\n> Title: *${payload.issue.title}*${quotedBodyStr}`;
+    const actionStr = lodash_1.get(actionMap, action, 'n/a');
+    return `Issue #${issueNumber} ${actionStr} by ${userStr} - ${url}\n> _repo: ${repo}_\n> Title: *${issueTitle}*\n${quotedBody}`;
 });
-const parseIssueCommentEvent = (payload, keybaseUsername) => __awaiter(void 0, void 0, void 0, function* () {
-    const url = yield utils_1.getShortenedUrl(payload.comment.html_url);
-    const userStr = keybaseUsername ? `@${keybaseUsername}` : `GitHub user \`${payload.sender.login}\``;
+const parseIssueCommentEvent = ({ payload, keybaseUsername }) => __awaiter(void 0, void 0, void 0, function* () {
+    const ghUser = lodash_1.get(payload, 'sender.login', 'UNKNOWN');
+    const url = yield utils_1.getShortenedUrl(lodash_1.get(payload, 'comment.html_url', 'N/A'));
+    const userStr = keybaseUsername ? `@${keybaseUsername}` : `GitHub user \`${ghUser}\``;
+    const action = lodash_1.get(payload, 'action', null);
+    const repo = lodash_1.get(payload, 'repository.full_name', 'n/a');
+    const issueNumber = lodash_1.get(payload, 'issue.number', 'n/a');
+    const commentBody = lodash_1.get(payload, 'comment.body', 'N/A');
     const actionMap = {
         created: '*New*',
         edited: '*Updated*',
         deleted: '*Deleted*',
     };
-    const actionStr = actionMap[payload.action];
-    const preposition = payload.action === 'deleted' ? 'by' : 'from';
-    const quotedComment = exports.parseIntoQuotedString(payload.comment.body);
-    return `${actionStr} comment on Issue #${payload.issue.number} ${preposition} ${userStr}. ${url}\n> _repo: ${payload.repository.full_name}_\n${quotedComment}`;
+    const actionStr = lodash_1.get(actionMap, action, 'N/A');
+    const preposition = action === 'deleted' ? 'by' : 'from';
+    const quotedComment = exports.parseIntoQuotedString(commentBody);
+    return `${actionStr} comment on Issue #${issueNumber} ${preposition} ${userStr}. ${url}\n> _repo: ${repo}_\n${quotedComment}`;
 });
 exports.generateChatMessage = ({ context, keybaseUsername }) => __awaiter(void 0, void 0, void 0, function* () {
     core.debug(`GitHub event: ${JSON.stringify(context)}`);
-    switch (context.eventName) {
+    const eventName = lodash_1.get(context, 'eventName', null);
+    switch (eventName) {
         case 'push':
             return yield parsePushEvent(context.payload, keybaseUsername);
         case 'watch':
-            return parseRepoStarringEvent(context.payload, keybaseUsername);
+            return parseRepoStarringEvent({ payload: context.payload, keybaseUsername });
         case 'pull_request':
-            return yield parsePullRequestEvent(context.payload, keybaseUsername);
+            return yield parsePullRequestEvent({ payload: context.payload, keybaseUsername });
         case 'commit_comment':
-            return yield parseCommitCommentEvent(context.payload, keybaseUsername);
+            return yield parseCommitCommentEvent({ payload: context.payload, keybaseUsername });
         case 'issues':
-            return yield parseIssuesEvent(context.payload, keybaseUsername);
+            return yield parseIssuesEvent({ payload: context.payload, keybaseUsername });
         case 'issue_comment':
-            return yield parseIssueCommentEvent(context.payload, keybaseUsername);
+            return yield parseIssueCommentEvent({ payload: context.payload, keybaseUsername });
         default:
             core.error('Ignoring this event as it is unsupported by this application.');
     }
