@@ -1,0 +1,28 @@
+name: "Keybase Notifications"
+author: "marvinpinto"
+description: "Send Keybase chat notifications from GitHub actions"
+inputs:
+  keybase_username:
+    description: "Keybase username"
+    required: true
+  keybase_paper_key:
+    description: "Keybase paper key"
+    required: true
+  keybase_channel:
+    description: 'For peer channels, e.g. "marvinpinto,octocat"'
+    required: false
+  keybase_team_name:
+    description: "Required for team channels"
+    required: false
+  keybase_topic_name:
+    description: 'Required for team channels, e.g. "general"'
+    required: false
+  message:
+    description: 'A customized notification messsage, e.g. "Hey there, world!"'
+    required: false
+runs:
+  using: "node12"
+  main: "dist/index.js"
+branding:
+  icon: "message-square"
+  color: "blue"
